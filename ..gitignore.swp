@@ -1,0 +1,17 @@
+# Git に追加しないファイルリスト
+
+# 環境変数（重要！）
+.env
+
+# Node.js のパッケージ（インストールすれば再生成可能）
+node_modules/
+
+# Next.js のビルド結果（Git に含めるべきではない）
+.next/
+
+# TypeScript の一時ファイル
+next-env.d.ts
+
+# OS・エディタの設定ファイル（不要）
+.DS_Store
+.vscode/
