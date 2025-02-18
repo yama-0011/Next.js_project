@@ -1,6 +1,8 @@
 import Pagination from '@/app/ui/invoices/pagination';
 import Search from '@/app/ui/search';
 import Table from '@/app/ui/invoices/table';
+import Link from 'next/link';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { CreateInvoice } from '@/app/ui/invoices/buttons';
 import { lusitana } from '@/app/ui/fonts';
 import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
@@ -33,7 +35,13 @@ export default async function Page(props: {
       <div className="mt-5 flex w-full justify-center">
         <Pagination totalPages={totalPages} />
       </div>
-    </div>
+    <Link
+    href="/create"
+    className="flex items-center gap-5 self-start rounded-lg bg-blue-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-400 md:text-base"
+  >
+    <span>create</span> <ArrowRightIcon className="w-5 md:w-6" />
+  </Link>
+  </div>
   );
 }
 
