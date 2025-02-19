@@ -28,6 +28,7 @@ export default async function Page(props: {
       <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
         <Search placeholder="Search invoices..." />
         <CreateInvoice />
+        console.log(typeof rawFormData.amount);
       </div>
        <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
         <Table query={query} currentPage={currentPage} />
@@ -36,7 +37,7 @@ export default async function Page(props: {
         <Pagination totalPages={totalPages} />
       </div>
     <Link
-    href="/create"
+    href="/dashboard/Invoices/create"
     className="flex items-center gap-5 self-start rounded-lg bg-blue-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-400 md:text-base"
   >
     <span>create</span> <ArrowRightIcon className="w-5 md:w-6" />
