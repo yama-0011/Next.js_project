@@ -16,7 +16,8 @@ export function CreateInvoice() {
 export function UpdateInvoice({ id }: { id: string }) {
   return (
     <Link
-      href="/dashboard/invoices"
+      href={`/dashboard/Invoices/${id}/edit`}
+      // Next.js が自動で　"export default async function Page"　を呼び出ししている。
       className="rounded-md border p-2 hover:bg-gray-100"
     >
       <PencilIcon className="w-5" />

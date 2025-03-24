@@ -20,6 +20,8 @@ export default async function Page(props: {
   const currentPage = Number(searchParams?.page) || 1;
   const totalPages = await fetchInvoicesPages(query);
 
+  // console.log(typeof rawFormData.amount);
+  console.log("query:", query, "currentPage:", currentPage);
   return (
     <div className="w-full">
       <div className="flex w-full items-center justify-between">
@@ -28,10 +30,11 @@ export default async function Page(props: {
       <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
         <Search placeholder="Search invoices..." />
         <CreateInvoice />
-        console.log(typeof rawFormData.amount);
       </div>
        <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
         <Table query={query} currentPage={currentPage} />
+         {/* Table　で　export default async function InvoicesTableを呼び出ししている。 
+          export default を使った関数やコンポーネントをインポートするときは、インポートする側の名前は自由に決められる という特性がある。*/}
       </Suspense>
       <div className="mt-5 flex w-full justify-center">
         <Pagination totalPages={totalPages} />

@@ -1,0 +1,93 @@
+node_modules/next/dist/server/app-render/action-handler.js
+
+async function handleAction({ req, res, ComponentMod, serverModuleMap, generateFlight, workStore, requestStore, serverActions, ctx }) {
+    const contentType = req.headers['content-type'];
+    const { serverActionsManifest, page } = ctx.renderOpts;
+    const { actionId, isURLEncodedAction, isMultipartAction, isFetchAction, isServerAction } = (0, _serveractionrequestmeta.getServerActionRequestMetadata)(req);
+    //サーバーアクションでない場合は、処理をスキップする。
+    if (!isServerAction) {
+        return;
+    }
+    if (workStore.isStaticGeneration) {
+        throw new Error("Invariant: server actions can't be handled during static rendering");
+    }
+    let temporaryReferences;
+    const finalizeAndGenerateFlight = (...args)=>{
+        // レンダリング段階に切り替わると、cookies()は以下を返す。
+        // `workUnitStore.userspaceMutableCookies` の代わりに `workUnitStore.cookies` を使用します。
+        // アクションの間に実行されたクッキーの書き込みを、レンダーが見るようにしたい
+        // そのため、変更を反映させるために不変クッキーを更新する必要があります。
+        (0, _requeststore.synchronizeMutableCookies)(requestStore);
+        requestStore.phase = 'render';
+        return generateFlight(...args);
+    };
+    requestStore.phase = 'action';
+    // アクションを実行する場合、デフォルトは no-store だが、`cache: 'force-cache'` を指定することができる。
+    workStore.fetchCache = 'default-no-store';
+    const originDomain = typeof req.headers['origin'] === 'string' ? new URL(req.headers['origin']).host : undefined;
+    //reqでoriginを取得し、文字列（string)かNullまたはundefinesか判定。new URLでURLをインスタンス化 + .host でホスト名だけ取得。(例：new URL("https://example.com:8080").host→結果"example.com:8080")
+    const forwardedHostHeader = req.headers['x-forwarded-host'];//reqでx-forwarded-hostを取得
+    const hostHeader = req.headers['host'];//reqでhost名を取得
+    const host = forwardedHostHeader ? { //CSRFでhostが使用されているので、確認必要。！！！！！！！！！！！！！！！！！！！！
+        type: "x-forwarded-host",
+        value: forwardedHostHeader
+    } : hostHeader ? {
+        type: "host",
+        value: hostHeader
+    } : undefined;
+    let warning = undefined;
+    function warnBadServerActionRequest() {
+        if (warning) {//undefinedであればturu
+            (0, _log.warn)(warning);
+        }
+    }
+    // これはCSRF攻撃を防ぐためである。x-forwarded-host`が設定されている場合、同じホストからのリクエストであることを確認する必要がある。
+    if (!originDomain) {  //originDomainでチェックが引っ掛かったとき次の処理、
+        // これは `host` ヘッダーを送信しない古いブラウザかもしれない。この場合は無視する。
+        warning = 'Missing `origin` header from a forwarded Server Actions request.';
+    } else if (!host || originDomain !== host.value) {
+        // 顧客が許可される起源のリストを設定した場合、リクエストを許可する。
+        // これらは安全であると考えられますが、インフラ(リバースプロキシなど)によって設定された転送ホストとは異なるかもしれません。
+        if ((0, _csrfprotection.isCsrfOriginAllowed)(originDomain, serverActions == null ? void 0 : serverActions.allowedOrigins)) {
+        // Ignore it(無視する)
+        } else {
+            if (host) {
+                // これはCSRF攻撃のようです。アクションを続行すべきではありません。
+                console.error(`\`${host.type}\` header with value \`${limitUntrustedHeaderValueForLogs(host.value)}\` does not match \`origin\` header with value \`${limitUntrustedHeaderValueForLogs(originDomain)}\` from a forwarded Server Actions request. Aborting the action.`);
+            } else {
+                // これは攻撃だ。アクションを続行すべきではありません。
+                console.error(`\`x-forwarded-host\` or \`host\` headers are not provided. One of these is needed to compare the \`origin\` header from a forwarded Server Actions request. Aborting the action.`);
+            }
+            const error = new Error('Invalid Server Actions request.');
+            if (isFetchAction) {
+                var _workStore_incrementalCache;
+                res.statusCode = 500;
+                await Promise.all([
+                    (_workStore_incrementalCache = workStore.incrementalCache) == null ? void 0 : _workStore_incrementalCache.revalidateTag(workStore.revalidatedTags || []),
+                    ...Object.values(workStore.pendingRevalidates || {}),
+                    ...workStore.pendingRevalidateWrites || []
+                ]);
+                const promise = Promise.reject(error);
+                try {
+                    // 拒否を早期に発動させるには、プロミスを待つ必要がある。
+                    // を呼び出すまでにすでに処理されているようにする。
+                    // をRSCランタイムに送る。そうでなければ、ハンドリングされていない
+                    // レンダラーでのプロミス拒否エラー。
+                    await promise;
+                } catch  {
+                // エラーを飲み込めば、クライアントで処理される
+                }
+                return {
+                    type: 'done',
+                    result: await finalizeAndGenerateFlight(req, ctx, {
+                        actionResult: promise,
+                        // ページが再検証されなかった場合、フライトツリーのレンダリングをスキップすることができる。
+                        skipFlight: !workStore.pathWasRevalidated,
+                        temporaryReferences
+                    })
+                };
+            }
+            throw error;
+        }
+    }
+}
