@@ -158,6 +158,8 @@ export async function fetchInvoiceById(id: string) {
       amount: invoice.amount / 100,
     }));
 
+    console.log(invoice); // インボイスは空の配列 [] です。
+
     return invoice[0];
   } catch (error) {
     console.error('Database Error:', error);
