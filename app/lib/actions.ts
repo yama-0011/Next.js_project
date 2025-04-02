@@ -7,9 +7,16 @@ import { db } from '@vercel/postgres';
  
 const FormSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
+  customerId: z.string({
+    invalid_type_error: 'お客様を選択してください。',
+  }),
+  amount: z.coerce
+  .number()
+  .gt(0, { message: '0ドル以上の金額を入力してください。' }),
+
+  status: z.enum(['pending', 'paid'],{
+    invalid_type_error: '請求書のステータスを選択してください。',
+  }),
   date: z.string(),
 });
  
@@ -18,24 +25,44 @@ const CreateInvoice = FormSchema.omit({ id: true, date: true });
 const sql = db;
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
-export async function createInvoice(formData: FormData) {
-  const { customerId, amount, status } = CreateInvoice.parse({
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
+
+export async function createInvoice(prevState: State, formData: FormData) {
+  const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'フィールドがありません。請求書の作成に失敗しました。 ',
+    };
+  }
+
+  const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split('T')[0];
+  
   try {
   await sql`
   INSERT INTO invoices (customer_id, amount, status, date)
   VALUES (${customerId}, ${amountInCents}, ${status}, ${date})`;
-  } catch (error) {
-  console.error(error);
+  } catch (_error) {
+    return {
+      message: 'データベースエラー： 請求書の作成に失敗しました。',
+    };
   }
 
-revalidatePath('/dashboard/invoices');
-redirect('/dashboard/invoices');
+revalidatePath('/dashboard/Invoices');
+redirect('/dashboard/Invoices');
 }
 
 export async function updateInvoice(id: string, formData: FormData) {
